@@ -31,17 +31,21 @@ PORTABLE_MANIFEST_PATTERN = re.compile(r'^.{2,}\.manifest$')
 # ---------- InfluxDB 2.x constants ----------
 V2_MANIFEST_NAME = 'manifest.json'
 V2_BOLT_NAMES = {'bolt', 'kv'}
+# InfluxDB 2.x may produce timestamped bolt files (e.g. 20240212T140100Z.bolt)
+V2_BOLT_PATTERN = re.compile(r'^.{2,}\.bolt$')
 
 
 def is_meta_file(filename):
     """Check if a filename matches a known InfluxDB meta/metadata backup pattern.
 
-    Covers 1.x meta.00 / *.meta and 2.x bolt / kv files.
+    Covers 1.x meta.00 / *.meta, 2.x bolt / kv files, and timestamped
+    *.bolt files produced by some InfluxDB 2.x versions.
     """
     basename = os.path.basename(filename)
     if basename in V2_BOLT_NAMES:
         return True
-    return bool(LEGACY_META_PATTERN.match(basename) or PORTABLE_META_PATTERN.match(basename))
+    return bool(LEGACY_META_PATTERN.match(basename) or PORTABLE_META_PATTERN.match(basename)
+                or V2_BOLT_PATTERN.match(basename))
 
 
 def is_shard_file(filename):
