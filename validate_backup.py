@@ -16,11 +16,11 @@ from pathlib import Path
 # Patterns for InfluxDB backup files
 # Legacy format: meta.00, db.rp.shard.index (e.g. mydb.autogen.00001.00)
 LEGACY_META_PATTERN = re.compile(r'^meta\.\d+$')
-LEGACY_SHARD_PATTERN = re.compile(r'^.+\..+\.\d+\.\d+$')
+LEGACY_SHARD_PATTERN = re.compile(r'^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.\d+\.\d+$')
 # Portable format: <timestamp>.manifest, <timestamp>.meta, <timestamp>.<shard>.tar.gz
-PORTABLE_META_PATTERN = re.compile(r'^.+\.meta$')
+PORTABLE_META_PATTERN = re.compile(r'^.{2,}\.meta$')
 PORTABLE_SHARD_PATTERN = re.compile(r'^.+\.s\d+\.tar\.gz$')
-PORTABLE_MANIFEST_PATTERN = re.compile(r'^.+\.manifest$')
+PORTABLE_MANIFEST_PATTERN = re.compile(r'^.{2,}\.manifest$')
 
 
 def is_meta_file(filename):

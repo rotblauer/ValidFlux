@@ -195,12 +195,8 @@ class TestValidateBackupDirectory(unittest.TestCase):
                 json.dump(manifest, f)
             with open(os.path.join(tmpdir, f"{ts}.meta"), 'wb') as f:
                 f.write(b'\x00' * 64)
-            # Note: intentionally NOT creating the shard file
-            # Still need at least one data file for the "total_files == 0" check
-            # But the manifest cross-ref should catch the missing shard
-            # The meta file alone doesn't count as a data file in the
-            # directory logic since it isn't a shard, so total_files=0 will
-            # trigger first. Let's add an unrelated data file.
+            # Add an unrelated data file so validation reaches the manifest
+            # cross-referencing step (which should catch the missing shard).
             with open(os.path.join(tmpdir, "other.autogen.00001.00"), 'wb') as f:
                 f.write(b'\x00' * 64)
             self.assertFalse(validate_backup_directory(tmpdir))
