@@ -36,6 +36,13 @@ class TestIsMetaFile(unittest.TestCase):
     def test_v2_kv(self):
         self.assertTrue(is_meta_file("kv"))
 
+    def test_v2_timestamped_bolt(self):
+        self.assertTrue(is_meta_file("20240212T140100Z.bolt"))
+        self.assertTrue(is_meta_file("backup.bolt"))
+
+    def test_v2_short_bolt_rejected(self):
+        self.assertFalse(is_meta_file("x.bolt"))
+
     def test_non_meta(self):
         self.assertFalse(is_meta_file("mydb.autogen.00001.00"))
         self.assertFalse(is_meta_file("manifest"))
@@ -295,6 +302,20 @@ class TestValidateBackupDirectoryV2(unittest.TestCase):
                 f.write(b'\x00' * 512)
             self.assertTrue(validate_backup_directory(tmpdir))
 
+    def test_v2_timestamped_bolt(self):
+        """InfluxDB 2.x may produce timestamped bolt files."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ts = "20240212T140100Z"
+            with open(os.path.join(tmpdir, f"{ts}.manifest"), 'w') as f:
+                json.dump({"version": 2}, f)
+            with open(os.path.join(tmpdir, f"{ts}.bolt"), 'wb') as f:
+                f.write(b'\x00' * 256)
+            shard_dir = os.path.join(tmpdir, "1234")
+            os.makedirs(shard_dir)
+            with open(os.path.join(shard_dir, "000000001.tsm"), 'wb') as f:
+                f.write(b'\x00' * 512)
+            self.assertTrue(validate_backup_directory(tmpdir))
+
     def test_v2_manifest_cross_ref(self):
         """Manifest references a file that doesn't exist -> fail."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -547,6 +568,18 @@ class TestValidateBackupArchive(unittest.TestCase):
                 "1234/000000001.tsm": b'\x00' * 512,
             }, root_dir="my_custom_backup_name")
             # Should still pass validation (data is valid) but warn
+            self.assertTrue(validate_backup_archive(archive))
+
+    def test_v2_timestamped_bolt_archive(self):
+        """Archive with timestamped .bolt metadata file should be valid."""
+        ts = "20240212T140100Z"
+        manifest = json.dumps({"version": 2})
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive = self._create_tar(tmpdir, {
+                f"{ts}.manifest": manifest,
+                f"{ts}.bolt": b'\x00' * 256,
+                "1234/000000001.tsm": b'\x00' * 512,
+            }, compress=True, root_dir="influxdb_backup_20240101_120000")
             self.assertTrue(validate_backup_archive(archive))
 
 
