@@ -58,14 +58,10 @@ python validate_backup.py /path/to/backup
 
 # Validate a backup archive
 python validate_backup.py /path/to/backup.tar.gz
-
-# Verbose output
-python validate_backup.py --verbose /path/to/backup
 ```
 
 **Options:**
 - `backup_path` - Path to backup directory or archive file (required)
-- `--verbose` - Show verbose output
 
 The script validates:
 - Backup directory/archive existence and readability

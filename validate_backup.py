@@ -178,14 +178,12 @@ def main():
 Examples:
   %(prog)s /path/to/backup
   %(prog)s /path/to/backup.tar.gz
-  %(prog)s --verbose /var/lib/influxdb/backup
+  %(prog)s /var/lib/influxdb/backup
         '''
     )
     
     parser.add_argument('backup_path',
                         help='Path to backup directory or archive file')
-    parser.add_argument('--verbose', action='store_true',
-                        help='Show verbose output')
     
     args = parser.parse_args()
     
