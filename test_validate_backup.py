@@ -40,6 +40,14 @@ class TestIsMetaFile(unittest.TestCase):
         self.assertTrue(is_meta_file("20240212T140100Z.bolt"))
         self.assertTrue(is_meta_file("backup.bolt"))
 
+    def test_v2_compressed_bolt(self):
+        self.assertTrue(is_meta_file("20240212T140100Z.bolt.gz"))
+        self.assertTrue(is_meta_file("backup.bolt.gz"))
+
+    def test_v2_sqlite_metadata(self):
+        self.assertTrue(is_meta_file("20240212T140100Z.sqlite.gz"))
+        self.assertTrue(is_meta_file("sqlite"))
+
     def test_v2_short_bolt_rejected(self):
         self.assertFalse(is_meta_file("x.bolt"))
 
@@ -60,6 +68,9 @@ class TestIsShardFile(unittest.TestCase):
     def test_portable_shard(self):
         self.assertTrue(is_shard_file("20220214T120000Z.s1.tar.gz"))
         self.assertTrue(is_shard_file("20220214T120000Z.s123.tar.gz"))
+
+    def test_numbered_shard(self):
+        self.assertTrue(is_shard_file("20260212T025958Z.1.tar.gz"))
 
     def test_non_shard(self):
         self.assertFalse(is_shard_file("meta.00"))
@@ -333,6 +344,25 @@ class TestValidateBackupDirectoryV2(unittest.TestCase):
                 f.write(b'\x00' * 512)
             self.assertFalse(validate_backup_directory(tmpdir))
 
+    def test_v2_compressed_backup_layout(self):
+        """Backup with gzip-compressed metadata and numbered shard archives."""
+        ts = "20260212T025958Z"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest = {"version": 2, "files": [
+                {"fileName": f"{ts}.bolt.gz"},
+                {"fileName": f"{ts}.sqlite.gz"},
+                {"fileName": f"{ts}.1.tar.gz"},
+            ]}
+            with open(os.path.join(tmpdir, f"{ts}.manifest"), 'w') as f:
+                json.dump(manifest, f)
+            with open(os.path.join(tmpdir, f"{ts}.bolt.gz"), 'wb') as f:
+                f.write(b'\x00' * 256)
+            with open(os.path.join(tmpdir, f"{ts}.sqlite.gz"), 'wb') as f:
+                f.write(b'\x00' * 256)
+            with open(os.path.join(tmpdir, f"{ts}.1.tar.gz"), 'wb') as f:
+                f.write(b'\x00' * 128)
+            self.assertTrue(validate_backup_directory(tmpdir))
+
 
 # ---- Archive-based backup tests -----------------------------------------
 
@@ -580,6 +610,23 @@ class TestValidateBackupArchive(unittest.TestCase):
                 f"{ts}.bolt": b'\x00' * 256,
                 "1234/000000001.tsm": b'\x00' * 512,
             }, compress=True, root_dir="influxdb_backup_20240101_120000")
+            self.assertTrue(validate_backup_archive(archive))
+
+    def test_v2_compressed_backup_archive(self):
+        """Archive containing .bolt.gz/.sqlite.gz and numbered shard archives."""
+        ts = "20260212T025958Z"
+        manifest = json.dumps({"version": 2, "files": [
+            {"fileName": f"{ts}.bolt.gz"},
+            {"fileName": f"{ts}.sqlite.gz"},
+            {"fileName": f"{ts}.1.tar.gz"},
+        ]})
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive = self._create_tar(tmpdir, {
+                f"{ts}.manifest": manifest,
+                f"{ts}.bolt.gz": b'\x00' * 256,
+                f"{ts}.sqlite.gz": b'\x00' * 256,
+                f"{ts}.1.tar.gz": b'\x00' * 128,
+            }, compress=True, root_dir="influxdb_backup_20260211_205958")
             self.assertTrue(validate_backup_archive(archive))
 
 

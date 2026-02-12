@@ -33,6 +33,9 @@ V2_MANIFEST_NAME = 'manifest.json'
 V2_BOLT_NAMES = {'bolt', 'kv'}
 # InfluxDB 2.x may produce timestamped bolt files (e.g. 20240212T140100Z.bolt)
 V2_BOLT_PATTERN = re.compile(r'^.{2,}\.bolt$')
+V2_BOLT_GZ_PATTERN = re.compile(r'^.{2,}\.bolt\.gz$')
+V2_SQLITE_NAMES = {'sqlite'}
+V2_SQLITE_PATTERN = re.compile(r'^.{2,}\.sqlite(\.gz)?$')
 
 
 def is_meta_file(filename):
@@ -42,16 +45,26 @@ def is_meta_file(filename):
     *.bolt files produced by some InfluxDB 2.x versions.
     """
     basename = os.path.basename(filename)
-    if basename in V2_BOLT_NAMES:
+    if basename in V2_BOLT_NAMES or basename in V2_SQLITE_NAMES:
         return True
     return bool(LEGACY_META_PATTERN.match(basename) or PORTABLE_META_PATTERN.match(basename)
-                or V2_BOLT_PATTERN.match(basename))
+                or V2_BOLT_PATTERN.match(basename) or V2_BOLT_GZ_PATTERN.match(basename)
+                or V2_SQLITE_PATTERN.match(basename))
 
 
 def is_shard_file(filename):
     """Check if a filename matches a known InfluxDB shard backup pattern."""
     basename = os.path.basename(filename)
-    return bool(LEGACY_SHARD_PATTERN.match(basename) or PORTABLE_SHARD_PATTERN.match(basename))
+    if LEGACY_SHARD_PATTERN.match(basename) or PORTABLE_SHARD_PATTERN.match(basename):
+        return True
+
+    if basename.endswith('.tar.gz'):
+        stem = basename[:-7]
+        prefix, sep, shard_part = stem.rpartition('.')
+        if sep and shard_part.isdigit():
+            return True
+
+    return False
 
 
 def is_manifest_file(filename):
